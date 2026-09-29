@@ -21,16 +21,14 @@ module "golden_template" {
 
 module "control_plane" {
   source = "git::https://github.com/Virgile-Ron-Darmon/homelab-platform.git//terraform/proxmox/deploy-cluster-from-source/clone-fleet?ref=main"
-  name_prefix    = "k8s-master"
+  name_prefix    = var.name_prefix_control_plane
   template_vm_id = module.golden_template.template_vm_id
   template_node  = module.golden_template.template_node
 
-  vms         = [
-    { node = "local1", cpus = 2, ram = 4096 },
-  ]
-  vm_id_start = 1700
-  ip_network  = "10.0.50.0"
-  ip_netmask  = "255.255.0.0"
+  vms         = var.vms_control_plane
+  vm_id_start = var.vm_id_start_control_plane
+  ip_network  = var.ip_network_control_plane
+  ip_netmask  = var.ip_netmask_control_plane
 
   vm_ssh_user     = var.ssh_user
   vm_ssh_password = var.ssh_password
@@ -38,19 +36,16 @@ module "control_plane" {
 
 module "workers" {
   source = "git::https://github.com/Virgile-Ron-Darmon/homelab-platform.git//terraform/proxmox/deploy-cluster-from-source/clone-fleet?ref=main"
-  name_prefix    = "k8s-worker"
+  name_prefix    = var.name_prefix_workers
   template_vm_id = module.golden_template.template_vm_id
   template_node  = module.golden_template.template_node
 
-  vms         = [
-    { node = "local2", cpus = 6, ram = 16384 },
-    { node = "local3", cpus = 6, ram = 4096 },
-    { node = "local4", cpus = 6, ram = 4096 },
-  ]
-  vm_id_start = 1800
-  ip_network  = "10.0.51.0"
-  ip_netmask  = "255.255.0.0"
+  vms         = var.vms_workers
+  vm_id_start = var.vm_id_start_workers
+  ip_network  = var.ip_network_workers
+  ip_netmask  = var.ip_netmask_workers
 
   vm_ssh_user     = var.ssh_user
   vm_ssh_password = var.ssh_password
 }
+

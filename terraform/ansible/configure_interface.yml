@@ -1,0 +1,71 @@
+---
+# Moves every cluster VM from the address DHCP gave it to its static address.
+#
+# Run it once, from the ansible/ folder, against the DHCP inventories
+# Terraform writes:
+#   ansible-playbook \
+#     -i ../terraform/inventory/k8s-master_inventory_DHCP.ini \
+#     -i ../terraform/inventory/k8s-worker_inventory_DHCP.ini \
+#     playbooks/set_static_ip.yml
+#
+# Afterwards, use the *_inventory_static.ini files for everything else.
+# Each host needs target_interface, target_static_ip and target_netmask,
+# which the Terraform inventories already set.
+
+- name: Fetch homelab-platform
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tags: [always]
+
+  vars:
+    platform_repo: https://github.com/Virgile-Ron-Darmon/homelab-platform.git
+    platform_version: main
+
+  tasks:
+    - name: Clone or update homelab-platform at {{ platform_version }}
+      ansible.builtin.git:
+        repo: "{{ platform_repo }}"
+        version: "{{ platform_version }}"
+        dest: "{{ playbook_dir }}/roles/homelab-platform"
+
+        depth: 1
+        force: true
+
+- name: Switch cluster VMs from DHCP to static addresses
+  hosts: all:!localhost
+  gather_facts: false
+  become: true
+
+  vars:
+    platform_roles: "{{ playbook_dir }}/roles/homelab-platform/ansible/roles"
+
+  tasks:
+    - name: Check the inventory gives this host what the role needs
+      ansible.builtin.assert:
+        that:
+          - target_interface is defined
+          - target_static_ip is defined
+          - target_netmask is defined
+        fail_msg: >-
+          {{ inventory_hostname }} is missing target_interface, target_static_ip
+          or target_netmask. Use the *_inventory_DHCP.ini files from Terraform.
+        quiet: true
+
+    - name: Refuse to hand the same static IP to two hosts
+      any_errors_fatal: true
+      ansible.builtin.assert:
+        that:
+          - >-
+            ansible_play_hosts_all
+            | map('extract', hostvars, 'target_static_ip')
+            | select('equalto', target_static_ip)
+            | list | length == 1
+        fail_msg: >-
+          {{ target_static_ip }} is planned for more than one host. Check
+          ip_network and ip_netmask in the Terraform clone-fleet modules.
+        quiet: true
+
+    - name: Configure the static address
+      ansible.builtin.include_role:
+        name: "{{ platform_roles }}/network/conf_interface"
