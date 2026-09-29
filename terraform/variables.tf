@@ -43,6 +43,14 @@ variable "network_netmask" {
   type = string
 }
 
+variable "gateway" {
+  type = string
+}
+
+variable "dns_nameservers" {
+  type = list(string)
+}
+
 # Control Plane stuff
 
 variable "name_prefix_control_plane"{

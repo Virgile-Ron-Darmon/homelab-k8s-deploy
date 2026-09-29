@@ -33,6 +33,9 @@ module "control_plane" {
 
   vm_ssh_user     = var.ssh_user
   vm_ssh_password = var.ssh_password
+
+  gateway = var.gateway
+  dns_nameservers = var.dns_nameservers
 }
 
 module "workers" {
@@ -49,5 +52,8 @@ module "workers" {
 
   vm_ssh_user     = var.ssh_user
   vm_ssh_password = var.ssh_password
+
+  gateway = var.gateway
+  dns_nameservers = var.dns_nameservers
 }
 
