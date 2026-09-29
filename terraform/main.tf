@@ -29,6 +29,7 @@ module "control_plane" {
   vm_id_start = var.vm_id_start_control_plane
   ip_network  = var.ip_network_control_plane
   ip_netmask  = var.ip_netmask_control_plane
+  network_netmask = var.network_netmask
 
   vm_ssh_user     = var.ssh_user
   vm_ssh_password = var.ssh_password
@@ -44,6 +45,7 @@ module "workers" {
   vm_id_start = var.vm_id_start_workers
   ip_network  = var.ip_network_workers
   ip_netmask  = var.ip_netmask_workers
+  network_netmask = var.network_netmask
 
   vm_ssh_user     = var.ssh_user
   vm_ssh_password = var.ssh_password

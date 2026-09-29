@@ -17,6 +17,10 @@ crash.*.log
 .terraformrc
 terraform.rc
 
+# Ansible inventories
+
+*.ini
+
 # Editor / OS
 .vscode/
 .idea/

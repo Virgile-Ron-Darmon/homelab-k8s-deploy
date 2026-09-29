@@ -39,6 +39,9 @@ variable "ssh_password" {
   sensitive = true
 }
 
+variable "network_netmask" {
+  type = string
+}
 
 # Control Plane stuff
 
@@ -81,12 +84,38 @@ variable "vms_workers" {
   }))
 }
 
-variable "vm_id_start_workers"{
-  type = number
-}
-variable "ip_network_workers"{
-  type = string
-}
+#variable "vm_id_start_workers"{
+#  type = number
+#}
+#variable "ip_network_workers"{
+#  type = string
+#}
 variable "ip_netmask_workers"{
   type = string
+}
+
+
+
+variable "ip_network_workers" {
+  type = string
+
+  validation {
+    condition = (
+      cidrhost("${var.ip_network_workers}/24", 0) !=
+      cidrhost("${var.ip_network_control_plane}/24", 0)
+    )
+    error_message = "ip_network_workers and ip_network_control_plane must be in different /24 blocks."
+  }
+}
+
+variable "vm_id_start_workers" {
+  type = number
+
+  validation {
+    condition = (
+      var.vm_id_start_workers >= var.vm_id_start_control_plane + length(var.vms_control_plane) ||
+      var.vm_id_start_control_plane >= var.vm_id_start_workers + length(var.vms_workers)
+    )
+    error_message = "VM ID ranges for control_plane and workers overlap."
+  }
 }
