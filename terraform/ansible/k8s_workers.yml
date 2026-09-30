@@ -1,0 +1,90 @@
+---
+# Joins the worker nodes to the cluster the control plane playbook built,
+# then labels them as workers. Safe to rerun: nodes already in the cluster
+# are skipped.
+#
+# Run after k8s_control_plane.yml, from this folder:
+#   ansible-playbook \
+#     -i ../inventory/k8s-master_inventory_static.ini \
+#     -i ../inventory/k8s-worker_inventory_static.ini \
+#     k8s_workers.yml
+
+- name: Get a join command from the control plane
+  hosts: "{{ k8s_control_plane_hosts | default('k8s-master-*') }}"
+  become: true
+  order: sorted
+  gather_facts: false
+
+  vars_files:
+    - vars/k8s.yml
+
+  tasks:
+    - name: Create a worker join command on {{ k8s_first_cp }}
+      when: inventory_hostname == k8s_first_cp
+      block:
+        - name: Check the cluster has been initialised
+          ansible.builtin.stat:
+            path: "{{ k8s_admin_kubeconfig }}"
+          register: k8s_admin_conf
+
+        - name: Stop if the control plane is not set up yet
+          ansible.builtin.assert:
+            that: k8s_admin_conf.stat.exists
+            fail_msg: >-
+              {{ k8s_admin_kubeconfig }} is missing on {{ k8s_first_cp }}.
+              Run k8s_control_plane.yml first.
+            quiet: true
+
+        - name: Create a join command
+          ansible.builtin.command: kubeadm token create --print-join-command
+          register: k8s_join_command
+          changed_when: true
+          no_log: true
+
+        - name: Keep the join command for the workers
+          ansible.builtin.set_fact:
+            k8s_worker_join_command: "{{ k8s_join_command.stdout }}"
+          no_log: true
+
+- name: Join the worker nodes
+  hosts: "{{ k8s_worker_hosts | default('k8s-worker-*') }}"
+  become: true
+  order: sorted
+  gather_facts: false
+
+  vars_files:
+    - vars/k8s.yml
+
+  tasks:
+    - name: Check whether this node is already in the cluster
+      ansible.builtin.stat:
+        path: /etc/kubernetes/kubelet.conf
+      register: k8s_kubelet_conf
+
+    - name: Join as a worker on {{ inventory_hostname }}
+      ansible.builtin.command: >-
+        {{ hostvars[k8s_first_cp].k8s_worker_join_command }}
+        --cri-socket {{ k8s_cri_socket }}
+      when: not k8s_kubelet_conf.stat.exists
+      changed_when: true
+      no_log: true
+
+    - name: Wait until Ready on {{ inventory_hostname }}
+      ansible.builtin.command: >-
+        kubectl wait --for=condition=Ready node/{{ inventory_hostname }}
+        --timeout=300s
+      delegate_to: "{{ k8s_first_cp }}"
+      environment:
+        KUBECONFIG: "{{ k8s_admin_kubeconfig }}"
+      changed_when: false
+
+    # kubeadm leaves the ROLES column empty for workers; this fills it in.
+    - name: Add the worker role label on {{ inventory_hostname }}
+      ansible.builtin.command: >-
+        kubectl label node {{ inventory_hostname }}
+        node-role.kubernetes.io/worker= --overwrite
+      delegate_to: "{{ k8s_first_cp }}"
+      environment:
+        KUBECONFIG: "{{ k8s_admin_kubeconfig }}"
+      register: k8s_label
+      changed_when: "'not labeled' not in k8s_label.stdout"

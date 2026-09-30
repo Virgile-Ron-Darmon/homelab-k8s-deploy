@@ -1,0 +1,52 @@
+---
+# Settings shared by k8s_common.yml, k8s_control_plane.yml and k8s_workers.yml.
+#
+# The host patterns are not set here: a play's hosts line is resolved before
+# vars files load. Override them on the command line instead, for example
+#   -e k8s_control_plane_hosts='cp-*' -e k8s_worker_hosts='wk-*'
+# Both default to the name prefixes Terraform gives the VMs.
+
+# Kubernetes minor version. Picks the pkgs.k8s.io repo; the pin role then
+# installs the newest patch in it and holds kubelet, kubeadm and kubectl.
+k8s_minor: "1.33"
+
+# Sandbox (pause) image kubeadm 1.33 expects.
+k8s_pause_image: registry.k8s.io/pause:3.10
+
+k8s_cri_socket: unix:///run/containerd/containerd.sock
+
+# Pod network. Must not overlap any node network or your LAN.
+# 192.168.0.0/16 is the guide's value and Calico's default; change it if
+# anything on your network lives in 192.168.x.x.
+k8s_pod_network_cidr: 192.168.0.0/16
+
+k8s_api_port: 6443
+
+# Calico 3.30 line: the newest release (3.32) only tests Kubernetes 1.34+.
+calico_version: v3.30.7
+calico_manifest_url: "https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/calico.yaml"
+
+# Helm, installed on the control plane nodes only.
+# The Helm apt repo holds every release, so an apt preferences file limits
+# apt to helm_minor.*: installs and upgrades stay on the newest patch of it.
+helm_minor: "3.20"
+# The Kubernetes minor this Helm line is built against, from the table at
+# https://helm.sh/docs/topics/version_skew/ . Helm supports that version and
+# the three before it; the playbook stops if k8s_minor falls outside them.
+# Update both values together.
+helm_built_for_k8s: "1.35"
+# Fingerprint of the Helm repo signing key, from the Helm install docs.
+# The download is checked against it before apt trusts the key.
+helm_repo_key_fingerprint: DDF78C3E6EBB2D2CC223C95C62BA89D07698DBC6
+
+# First control plane node (by sorted name, so k8s-master-1): runs kubeadm
+# init and hands out join commands. The plays use order: sorted to match.
+k8s_first_cp: "{{ query('inventory_hostnames', k8s_control_plane_hosts | default('k8s-master-*')) | sort | first }}"
+
+# Address every node uses to reach the API server. Defaults to the first
+# control plane node, which works but is not highly available: for real HA,
+# point it at a VIP or load balancer in front of all control plane nodes
+# BEFORE the first run, since it cannot easily be changed afterwards.
+k8s_control_plane_endpoint: "{{ hostvars[k8s_first_cp].ansible_host }}:{{ k8s_api_port }}"
+
+k8s_admin_kubeconfig: /etc/kubernetes/admin.conf

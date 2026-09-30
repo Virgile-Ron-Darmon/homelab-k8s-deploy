@@ -1,0 +1,4 @@
+---
+collections:
+  # modprobe module, and version_sort used by the apt_install_pin role
+  - name: community.general
