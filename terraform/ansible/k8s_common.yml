@@ -161,6 +161,9 @@
     # Same edits as the guide: systemd cgroups to match kubelet, and the
     # pause image kubeadm expects. The second sandbox pattern covers the
     # containerd 2.x config layout.
+    # Plus one the guide doesn't need on Ubuntu: Debian's containerd looks for
+    # CNI plugins in /usr/lib/cni, but Calico installs them in /opt/cni/bin,
+    # so without this no pod outside the host network can start.
     - name: Write containerd config
       ansible.builtin.copy:
         dest: /etc/containerd/config.toml
@@ -171,11 +174,16 @@
           {{ containerd_default.stdout
              | regex_replace('SystemdCgroup = false', 'SystemdCgroup = true')
              | regex_replace('sandbox_image = ".*"', 'sandbox_image = "' ~ k8s_pause_image ~ '"')
-             | regex_replace("sandbox = '.*'", "sandbox = '" ~ k8s_pause_image ~ "'") }}
+             | regex_replace("sandbox = '.*'", "sandbox = '" ~ k8s_pause_image ~ "'")
+             | regex_replace('/usr/lib/cni', '/opt/cni/bin') }}
       notify: Restart containerd
 
     - name: Check the config really uses systemd cgroups
       ansible.builtin.command: grep -q 'SystemdCgroup = true' /etc/containerd/config.toml
+      changed_when: false
+
+    - name: Check the config looks for CNI plugins where Calico puts them
+      ansible.builtin.command: grep -q '/opt/cni/bin' /etc/containerd/config.toml
       changed_when: false
 
     - name: Enable and start containerd
