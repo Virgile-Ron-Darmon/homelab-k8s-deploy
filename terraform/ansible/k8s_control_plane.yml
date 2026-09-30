@@ -145,6 +145,16 @@
     - vars/k8s.yml
 
   tasks:
+    - name: Stop if Helm {{ helm_minor }} does not support Kubernetes {{ k8s_minor }}
+      ansible.builtin.assert:
+        that:
+          - k8s_minor is version(helm_built_for_k8s, '<=')
+          - k8s_minor is version(helm_built_for_k8s.split('.')[0] ~ '.' ~ (helm_built_for_k8s.split('.')[1] | int - 3), '>=')
+        fail_msg: >-
+          Helm {{ helm_minor }} supports Kubernetes {{ helm_built_for_k8s }} and the
+          three minors before it; k8s_minor is {{ k8s_minor }}. Update helm_minor
+          and helm_built_for_k8s together.
+        quiet: true
     - name: Add the Helm repo signing key
       ansible.builtin.get_url:
         url: https://packages.buildkite.com/helm-linux/helm-debian/gpgkey

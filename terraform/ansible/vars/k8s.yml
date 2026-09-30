@@ -35,9 +35,6 @@ helm_minor: "3.20"
 # the three before it; the playbook stops if k8s_minor falls outside them.
 # Update both values together.
 helm_built_for_k8s: "1.35"
-# Fingerprint of the Helm repo signing key, from the Helm install docs.
-# The download is checked against it before apt trusts the key.
-helm_repo_key_fingerprint: DDF78C3E6EBB2D2CC223C95C62BA89D07698DBC6
 
 # First control plane node (by sorted name, so k8s-master-1): runs kubeadm
 # init and hands out join commands. The plays use order: sorted to match.
