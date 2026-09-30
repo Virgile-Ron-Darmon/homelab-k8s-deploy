@@ -135,3 +135,39 @@
         owner: "{{ ansible_user }}"
         group: "{{ ansible_user }}"
         mode: "0600"
+
+- name: Install Helm on the control plane
+  hosts: "{{ k8s_control_plane_hosts | default('k8s-master-*') }}"
+  become: true
+  gather_facts: false
+
+  vars_files:
+    - vars/k8s.yml
+
+  tasks:
+    - name: Add the Helm repo signing key
+      ansible.builtin.get_url:
+        url: https://packages.buildkite.com/helm-linux/helm-debian/gpgkey
+        dest: /etc/apt/keyrings/helm.asc
+        mode: "0644"
+
+    - name: Add the Helm apt repo
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/helm.list
+        mode: "0644"
+        content: "deb [signed-by=/etc/apt/keyrings/helm.asc] https://packages.buildkite.com/helm-linux/helm-debian/any/ any main\n"
+
+    # The repo holds every Helm release; this keeps apt on helm_minor.
+    - name: Limit apt to Helm {{ helm_minor }}
+      ansible.builtin.copy:
+        dest: /etc/apt/preferences.d/helm
+        mode: "0644"
+        content: |
+          Package: helm
+          Pin: version {{ helm_minor }}.*
+          Pin-Priority: 1001
+
+    - name: Install Helm
+      ansible.builtin.apt:
+        name: helm
+        update_cache: true
