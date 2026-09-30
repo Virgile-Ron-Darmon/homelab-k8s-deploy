@@ -17,10 +17,10 @@ crash.*.log
 .terraformrc
 terraform.rc
 
-# Ansible inventories
+# Ansible
 
 *.ini
-
+**/homelab-platform/
 # Editor / OS
 .vscode/
 .idea/
