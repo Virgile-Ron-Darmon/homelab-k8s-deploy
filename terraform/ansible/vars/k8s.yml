@@ -26,6 +26,10 @@ k8s_api_port: 6443
 calico_version: v3.30.7
 calico_manifest_url: "https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/calico.yaml"
 
+# Multus CNI, installed after all nodes have joined.
+multus_version: "v4.3.0"
+multus_manifest_url: "https://raw.githubusercontent.com/k8snetworkplumbingwg/multus-cni/{{ multus_version }}/deployments/multus-daemonset-thick.yml"
+
 # Helm, installed on the control plane nodes only.
 # The Helm apt repo holds every release, so an apt preferences file limits
 # apt to helm_minor.*: installs and upgrades stay on the newest patch of it.
